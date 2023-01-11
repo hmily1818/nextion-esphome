@@ -1,0 +1,61 @@
+# This is ESPHome configuration file. This goes to the esphome folder
+# You need to provide your WiFi ssis/password and passwords for API and OTA (or put them in your esphome/secrets.yaml)
+esphome:
+  name: display_weather
+  platform: ESP8266
+  board: d1_mini
+  
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+api:
+  password: !secret api_password
+  
+
+ota:
+  password: !secret ota_password
+
+logger:
+    baud_rate: 0     # Disable UART logging (pins GPIO1/3 are used for Nextion communication)
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    level: VERY_VERBOSE
+    logs: 
+        api: VERY_VERBOSE
+        homeassistant: VERY_VERBOSE
+        api.service: VERY_VERBOSE
+        sensor: VERY_VERBOSE
+        scheduler: DEBUG
+
+
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      # Every 15 seconds
+      - seconds: /15
+        
+        then:
+          - lambda: |-
+                std::string val = id(bsched).state;
+                ESP_LOGD("main", "The current bsched is %s", val.c_str());
+                val = id(input_text1).state;
+                ESP_LOGD("main", "The current input_text1 is %s", val.c_str());
+      
+          # Every1 minutes
+      - seconds: /30
+        minutes: /2
+        then:
+            - lambda: |-
+                  std::string val = id(bsched).state;
+                  id(bsched).publish_state("ESP forced value");
+                  ESP_LOGD("main", "Forcing current input_text1");
+
+                
+sensor:
+ 
+  - platform: homeassistant   # Office temperature
+    id: temperature_office
+    entity_id: sensor.office_temperature_temperature
+    internal: true
